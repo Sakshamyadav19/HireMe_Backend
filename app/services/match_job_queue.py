@@ -12,6 +12,7 @@ from app.config.database import SessionLocal
 from app.models.match_job import MatchJob
 from app.schemas.matching import MatchResponse
 from app.services.embedding import embed_text
+from app.services.job_filter import filter_jobs_standalone
 from app.services.match_result_cache import save_match_results
 from app.services.matching import ResumeContext, run_matching_pipeline
 from app.services.reducto_parser import build_resume_meaning, parse_resume_with_reducto
@@ -64,7 +65,16 @@ async def _run_one_job(job_id: str, user_id: str, file_bytes: bytes, filename: s
             skills=resume_data["skills"],
             summary=resume_data["summary"],
         )
-        raw_embedding = await embed_text(resume_meaning)
+        # Run embed and SQL filter in parallel to overlap I/O
+        raw_embedding, filtered_job_ids = await asyncio.gather(
+            embed_text(resume_meaning),
+            asyncio.to_thread(
+                filter_jobs_standalone,
+                resume_data["domain"],
+                resume_data["yoe"],
+                resume_data.get("country"),
+            ),
+        )
         resume_embedding = [float(x) for x in raw_embedding]
 
         resume_ctx = ResumeContext(
@@ -75,7 +85,9 @@ async def _run_one_job(job_id: str, user_id: str, file_bytes: bytes, filename: s
             skills=resume_data["skills"] or [],
             resume_embedding=resume_embedding,
         )
-        response: MatchResponse = await run_matching_pipeline(db, resume_ctx)
+        response: MatchResponse = await run_matching_pipeline(
+            db, resume_ctx, filtered_job_ids=filtered_job_ids
+        )
         save_match_results(db, user_id, response.total_matches, response.matches)
         _set_job_status(db, job_id, "completed")
         logger.info("Match job %s completed: %d matches", job_id, response.total_matches)
