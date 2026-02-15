@@ -48,6 +48,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/", tags=["health"])
+def health_check():
+    """Health check endpoint for App Runner / load balancers."""
+    return {"status": "ok"}
+
+
 app.include_router(auth_router)
 app.include_router(jobs_router)
 app.include_router(matching_router)

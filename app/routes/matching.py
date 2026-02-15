@@ -2,7 +2,7 @@
 
 POST /api/match/upload     — Enqueue match job, return 202 with job_id.
 GET  /api/match/status/{id} — Job status (pending | processing | completed | failed).
-GET  /api/match/results    — Cursor-paginated read of latest match results (auth required).
+GET  /api/match/results    — Cursor-paginated read of latest match results (auth required). Returns empty list if none.
 """
 
 from __future__ import annotations
@@ -75,12 +75,17 @@ def get_results(
     limit: int = Query(50, ge=1, le=100),
     dir: str = Query("next"),
 ):
-    """Return one page of the user's latest match results (cursor-based). 404 if no result."""
+    """Return one page of the user's latest match results (cursor-based). Returns empty list if none."""
     if dir not in ("next", "prev"):
         raise HTTPException(status_code=400, detail="dir must be 'next' or 'prev'")
     if dir == "prev" and not cursor:
         raise HTTPException(status_code=400, detail="cursor required for dir=prev")
     page = get_match_results_page(db, user_id, cursor=cursor, limit=limit, dir=dir)
     if page is None:
-        raise HTTPException(status_code=404, detail="No match results. Upload a resume first.")
+        return MatchResultsCursorResponse(
+            total_matches=0,
+            matches=[],
+            next_cursor=None,
+            prev_cursor=None,
+        )
     return page

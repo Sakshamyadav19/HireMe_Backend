@@ -1,11 +1,19 @@
 from typing import Optional
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     # ── Existing ──
     DATABASE_URL: str
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def strip_database_url_quotes(cls, v: str) -> str:
+        if isinstance(v, str):
+            return v.strip().strip('"').strip("'")
+        return v
     JWT_SECRET: str
     FRONTEND_URL: str = "http://localhost:8080"
 

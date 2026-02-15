@@ -50,8 +50,15 @@ def get_match_results_page(
     Returns None if no cached result for user.
     """
     row = db.query(MatchResultCache).filter(MatchResultCache.user_id == user_id).first()
-    if not row or not row.matches_json:
+    if not row:
         return None
+    if not row.matches_json:
+        return MatchResultsCursorResponse(
+            total_matches=0,
+            matches=[],
+            next_cursor=None,
+            prev_cursor=None,
+        )
     total = row.total_matches
     matches_list = [MatchResult.model_validate(d) for d in row.matches_json]
     limit = max(1, min(limit, 100))
