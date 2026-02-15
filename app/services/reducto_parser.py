@@ -60,7 +60,6 @@ def parse_resume_with_reducto(file_bytes: bytes, filename: str) -> Dict[str, Any
         raise ValueError("Reducto pipeline did not return extract result list.")
 
     # First record: Reducto uses "Domain", "Country", "Technical Skills", "Summary", "experience"
-    print(result_list)
     data = result_list[0] if isinstance(result_list[0], dict) else {}
     domain = data.get("Domain") or data.get("domain") or "Engineering"
     yoe = data.get("experience") if "experience" in data else data.get("yoe")
