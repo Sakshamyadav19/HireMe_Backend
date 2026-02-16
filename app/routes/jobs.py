@@ -46,12 +46,15 @@ async def list_jobs(
     dir: str = Query("next"),
     limit: int = Query(50, ge=1, le=100),
     domain: str | None = Query(None),
+    country: str | None = Query(None),
     db: Session = Depends(get_db),
 ):
     """List jobs with cursor-based pagination (next/prev). No total count."""
     query = db.query(Job)
     if domain:
         query = query.filter(Job.domain == domain)
+    if country:
+        query = query.filter((Job.country.is_(None)) | (Job.country == country))
 
     if dir == "prev":
         if not cursor:
